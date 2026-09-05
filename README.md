@@ -24,5 +24,19 @@ This project leverages data science and machine learning to build a prediction m
 - After fitting the model, the coefficients were calculated and the predictions and prediction probabilities were compared against the actual values.
 - Using sklearn.metrics, the accuracy score was calculated which turned out to be 62.72% which was only significantly better than the baseline model.
 
+## Logistic Regression V2
+| Category  | Historical feature                    | Derived from          |
+| --------- | ------------------------------------- | --------------------- |
+| Baseline  | `rank_diff`                           | rank                  |
+| Baseline  | `points_diff`                         | ranking points        |
+| Results   | `win_rate_last_10_diff`               | `winner_code`         |
+| Dominance | `games_won_pct_last_10_diff`          | individual set scores |
+| Dominance | `avg_game_diff_last_10_diff`          | individual set scores |
+| Serving   | `avg_aces_last_10_diff`               | aces                  |
+| Serving   | `avg_double_faults_last_10_diff`      | double faults         |
+| Serving   | `avg_service_points_won_last_10_diff` | service points won %  |
+| Returning | `avg_return_points_won_last_10_diff`  | return points won %   |
+| Pressure  | `avg_break_points_won_last_10_diff`   | break points won %    |
+| Pressure  | `avg_break_points_saved_last_10_diff` | break points saved %  |
 
 
