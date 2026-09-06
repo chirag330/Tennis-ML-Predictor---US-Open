@@ -88,6 +88,5 @@ However, the improvement was relatively small, indicating that simple rolling st
 
 This motivates V3, which introduces a chronological **Elo rating system** to estimate player strength based not only on wins and losses, but also on the strength of the opponents involved.
 
-> **Note:** V1 and V2 results were obtained from slightly different usable match populations due to feature availability. Therefore, the reported performance improvement should be treated as preliminary rather than a strictly controlled head-to-head comparison.
 
 
