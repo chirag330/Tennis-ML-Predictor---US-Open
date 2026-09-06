@@ -38,5 +38,56 @@ This project leverages data science and machine learning to build a prediction m
 | Returning | `avg_return_points_won_last_10_diff`  | return points won %   |
 | Pressure  | `avg_break_points_won_last_10_diff`   | break points won %    |
 | Pressure  | `avg_break_points_saved_last_10_diff` | break points saved %  |
+### V2 — Historical Player Performance Features
+
+
+V2 extends the initial ranking-based logistic regression model by incorporating historical player performance. The goal was to test whether recent form, surface-specific performance, and match statistics provide additional predictive information beyond ATP ranking and ranking points.
+
+To prevent data leakage, match statistics were converted into **lagged rolling features**. For each player and match, performance metrics were calculated using only matches that occurred before the current match. Most recent-form statistics use a rolling window of the player's previous 10 matches.
+
+#### Features
+
+V2 uses 11 predictors:
+
+- ATP rank difference
+- ATP ranking points difference
+- Win rate over the previous 10 matches
+- Percentage of games won over the previous 10 matches
+- Historical hard-court win rate
+- Average aces over the previous 10 matches
+- Average double faults over the previous 10 matches
+- Average service points won over the previous 10 matches
+- Average return points won over the previous 10 matches
+- Average break points won over the previous 10 matches
+- Average break points saved over the previous 10 matches
+
+Player-level statistics were converted into home-vs-away differences before being passed to the model.
+
+`sets_won_pct_last_10` was also engineered but excluded from the final V2 feature set because it was highly correlated with recent win rate (r = 0.945) and games-won percentage (r = 0.901).
+
+#### Data Availability
+
+After requiring all V2 predictors to be available:
+
+- Total eligible completed matches: **74,304**
+- Matches available for V2: **47,017**
+- Data retained: **63.3%**
+
+ATP ranking and ranking points were the primary source of missing data, with approximately 32% missingness.
+
+#### Results
+
+| Model | Accuracy | Log Loss |
+|---|---:|---:|
+| V1 — Rank + Points | 62.72% | 0.6467 |
+| V2 — Rank + Historical Performance | **63.32%** | **0.6407** |
+
+V2 produced a modest improvement in both classification accuracy and probability quality. This suggests that recent player performance contains useful predictive information beyond ATP ranking alone.
+
+However, the improvement was relatively small, indicating that simple rolling statistics still fail to capture important aspects of player strength — particularly the **quality of opponents faced**. For example, an 80% recent win rate against lower-level opposition is treated similarly to an 80% win rate against elite ATP players.
+
+This motivates V3, which introduces a chronological **Elo rating system** to estimate player strength based not only on wins and losses, but also on the strength of the opponents involved.
+
+> **Note:** V1 and V2 results were obtained from slightly different usable match populations due to feature availability. Therefore, the reported performance improvement should be treated as preliminary rather than a strictly controlled head-to-head comparison.
 
 
