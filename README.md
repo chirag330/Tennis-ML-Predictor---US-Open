@@ -289,4 +289,19 @@ The next stage will investigate the behavior of the existing features and
 continue feature engineering before testing more flexible machine-learning
 models.
 
+### V4_0: VGBoost Baseline Model
+- This model used a different machine learning model: XGBoost to study the non-linear relationship
+  between the features
+- The model utilized the 11 features that were used previously except the Games Won Percentage from the 
+  last 10 matches played.
+- Games Won Percentage was dropped from the features because an ablation test suggested that removing 
+  that feature would result in better results for the model
+- The XGBClassifier was trained based on the 11 features with a max depth of 3, learning rate of 0.03 
+  and 300 trees
+- After fitting the model, it was found that XGBoost used Elo+ATP Rankings+ATP Points as the primary
+  features that dominated the model training
+- However, this version of XGBoost yielded: V4 XGBoost Accuracy: 0.640198225193039
+  V4 XGBoost Log Loss: 0.635078305969855 which was worse than V3.
+
+
 
