@@ -289,7 +289,7 @@ The next stage will investigate the behavior of the existing features and
 continue feature engineering before testing more flexible machine-learning
 models.
 
-### V4_0: VGBoost Baseline Model
+### V4_0: XGBoost Baseline Model
 - This model used a different machine learning model: XGBoost to study the non-linear relationship
   between the features
 - The model utilized the 11 features that were used previously except the Games Won Percentage from the 
@@ -303,5 +303,188 @@ models.
 - However, this version of XGBoost yielded: V4 XGBoost Accuracy: 0.640198225193039
   V4 XGBoost Log Loss: 0.635078305969855 which was worse than V3.
 
+
+### V3.1: Logistic Regression Feature Ablation
+
+Before moving further into tree-based models, feature ablation was performed on
+the V3 Logistic Regression model to investigate whether all engineered features
+were contributing useful predictive information.
+
+The strongest improvement came from removing
+`games_won_pct_last_10_diff`, which was highly correlated with other recent-form
+features.
+
+| Model | Accuracy | Log Loss |
+|---|---:|---:|
+| V3 Original | 64.30% | 0.63303 |
+| V3 without Win Rate | 64.48% | 0.63369 |
+| **V3.1 without Games Won %** | **64.65%** | **0.63249** |
+
+Removing the games-won percentage improved both accuracy and log loss.
+
+An additional ablation experiment removed `elo_diff` from V3.1:
+
+| Model | Accuracy | Log Loss |
+|---|---:|---:|
+| **V3.1 with Elo** | **64.65%** | **0.63249** |
+| V3.1 without Elo | 63.36% | 0.64075 |
+
+Removing Elo caused accuracy to decrease by approximately 1.29 percentage
+points and substantially increased log loss. This provided further evidence
+that the chronological Elo rating is contributing predictive information beyond
+ATP ranking, ranking points, and recent performance statistics.
+
+V3.1 remains the best-performing model on the 2025 validation set so far.
+
+
+### V4.1: Multi-Window Recent Form
+
+The first extension of the XGBoost model investigated whether recent player form
+could be represented at multiple time scales.
+
+In addition to the existing win rate over the previous 10 matches, two new
+lagged features were created:
+
+- `win_rate_last_5_diff`
+- `win_rate_last_20_diff`
+
+This allows the model to distinguish short-term form from more stable
+medium-term performance.
+
+For example, a player may have a 100% win rate over their previous five matches,
+a 90% win rate over their previous ten matches, and an 80% win rate over their
+previous twenty matches.
+
+As with all historical performance features, the current match is excluded
+using a one-match lag before calculating the rolling statistics.
+
+The same XGBoost hyperparameters and the same training/validation population
+were retained so that V4.0 and V4.1 could be compared directly.
+
+| Model | Accuracy | Log Loss |
+|---|---:|---:|
+| V4.0 XGBoost | 64.02% | 0.63508 |
+| **V4.1 + Multi-Window Form** | **64.09%** | **0.63498** |
+
+The additional form windows produced a small improvement in both metrics,
+suggesting that recent form at different time scales contains some additional
+signal, although the improvement was limited.
+
+
+## V5: Opponent-Adjusted Recent Form
+
+V5 introduced a more sophisticated measure of recent form that accounts for
+the strength of the opponents a player faced.
+
+Raw win rate treats all victories equally. For example, an 80% win rate against
+lower-rated opponents is treated the same as an 80% win rate against elite
+opposition.
+
+To address this limitation, each player's pre-match Elo rating and their
+opponent's pre-match Elo rating were used to calculate the expected probability
+of winning each historical match:
+
+\[
+P(\text{win}) =
+\frac{1}
+{1 + 10^{(R_{\text{opponent}} - R_{\text{player}})/400}}
+\]
+
+An Elo performance residual was then calculated:
+
+\[
+\text{Elo Performance}
+=
+\text{Actual Result}
+-
+\text{Expected Win Probability}
+\]
+
+where the actual result is 1 for a win and 0 for a loss.
+
+This produces an opponent-adjusted measure of performance.
+
+For example:
+
+- An underdog with a 20% expected win probability who wins receives a large
+  positive residual of approximately +0.80.
+- A heavy favorite with an 80% expected win probability who loses receives a
+  large negative residual of approximately -0.80.
+
+Rolling averages of this residual were then calculated over the player's
+previous:
+
+- 5 matches
+- 10 matches
+- 20 matches
+
+creating:
+
+- `elo_form_last_5_diff`
+- `elo_form_last_10_diff`
+- `elo_form_last_20_diff`
+
+All rolling calculations are lagged by one match, ensuring that the result of
+the match being predicted cannot enter its own features.
+
+### V5 Results
+
+The opponent-adjusted form features were added to the V4.1 XGBoost model while
+keeping the same XGBoost configuration.
+
+| Model | Accuracy | Log Loss |
+|---|---:|---:|
+| V4.0 XGBoost | 64.02% | 0.63508 |
+| V4.1 + Multi-Window Form | 64.09% | 0.63498 |
+| **V5 + Opponent-Adjusted Form** | **64.28%** | **0.63448** |
+
+V5 improved both accuracy and log loss compared with V4.1.
+
+This suggests that recent results become more informative when they are
+evaluated relative to the quality of opposition rather than treating every win
+and loss equally.
+
+However, V5 XGBoost still does not outperform V3.1 Logistic Regression, which
+currently remains the strongest validation model.
+
+
+## Current Model Comparison
+
+| Version | Model | Main Addition | Accuracy | Log Loss |
+|---|---|---|---:|---:|
+| Baseline | Higher-ranked player | ATP Rank | 62.54% | — |
+| V1 | Logistic Regression | Rank + Points | 62.72% | 0.6467 |
+| V2 | Logistic Regression | Historical Performance | 63.32% | 0.6407 |
+| V3 | Logistic Regression | Elo | 64.30% | 0.63303 |
+| **V3.1** | **Logistic Regression** | **Feature Ablation** | **64.65%** | **0.63249** |
+| V4.0 | XGBoost | Nonlinear Model | 64.02% | 0.63508 |
+| V4.1 | XGBoost | 5/10/20 Match Form | 64.09% | 0.63498 |
+| V5 | XGBoost | Opponent-Adjusted Form | 64.28% | 0.63448 |
+
+The current best model is **V3.1 Logistic Regression**, with a validation
+accuracy of approximately **64.65%** and log loss of **0.63249**.
+
+Although XGBoost has not yet surpassed Logistic Regression, the progression from
+V4.0 to V5 shows that richer feature engineering is improving its performance.
+
+
+## Current Development: Activity and Match Context
+
+The next stage of feature engineering investigates player activity and match
+readiness.
+
+Features currently being developed include:
+
+- Days since the player's previous match
+- Number of matches played in the previous 30 days
+- Number of matches played in the previous 90 days
+- Number of prior matches available for the player
+
+These features are intended to capture information that ranking, Elo, and
+recent win rate cannot directly represent, including inactivity, match
+sharpness, workload, and experience.
+
+Future model versions will also investigate richer match context and player
+representations before comparing additional machine-learning algorithms.
 
 
